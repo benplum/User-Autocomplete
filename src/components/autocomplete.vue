@@ -76,10 +76,13 @@ export default {
 
       let char
 
-      if ($event.data) {
-        char = $event.data
-      } else {
-        // Test for only letter keys
+      if (typeof $event.data !== 'undefined') {
+        // WebKit / Blink
+        if ($event.data) {
+          char = $event.data
+        }
+      } else if (window.getSelection) {
+        // Firefox
         let selection = window.getSelection()
         let range = selection.getRangeAt(0)
 
@@ -90,7 +93,8 @@ export default {
         char = String.fromCharCode(this.value.charCodeAt(offset - 1))
       }
 
-      if (char.length === 1 && /[a-zA-Z0-9]/.test(char)) {
+      // Test for letter keys only
+      if (char && char.length === 1 && /[a-zA-Z0-9]/.test(char)) {
         this.getWord()
       } else {
         this.clearResults()
@@ -206,10 +210,12 @@ export default {
      */
 
     positionResults (range) {
-      let position = range.getBoundingClientRect()
+      if (range && range.getClientRects) {
+        let rects = range.getClientRects()
 
-      if (position) {
-        this.offsetTop = position.y + 24
+        if (rects.length && rects[0].y > 0) {
+          this.offsetTop = rects[0].y + 24
+        }
       }
     },
 
@@ -229,18 +235,22 @@ export default {
      */
 
     getWord () {
-      let selection = window.getSelection()
-      let range = selection.getRangeAt(0)
+      let selection
+      let range
       let word = ''
 
-      selection.collapseToStart()
-      selection.modify('move', 'backward', 'word')
-      selection.modify('extend', 'forward', 'word')
+      if (window.getSelection && (selection = window.getSelection()).modify) {
+        range = selection.getRangeAt(0)
 
-      word = selection.toString()
+        selection.collapseToStart()
+        selection.modify('move', 'backward', 'word')
+        selection.modify('extend', 'forward', 'word')
 
-      selection.removeAllRanges()
-      selection.addRange(range)
+        word = selection.toString()
+
+        selection.removeAllRanges()
+        selection.addRange(range)
+      }
 
       this.setSearch(word)
       this.positionResults(range)
@@ -251,23 +261,24 @@ export default {
      */
 
     replaceWord (word) {
-      let selection = window.getSelection()
+      let selection
       let range
 
       word += '\u00A0'
 
-      selection.collapseToStart()
-      selection.modify('move', 'backward', 'word')
-      selection.modify('extend', 'forward', 'word')
+      if (window.getSelection && (selection = window.getSelection()).modify) {
+        selection.collapseToStart()
+        selection.modify('move', 'backward', 'word')
+        selection.modify('extend', 'forward', 'word')
 
-      range = selection.getRangeAt(0)
+        range = selection.getRangeAt(0)
 
-      range.deleteContents()
-      range.insertNode(document.createTextNode(word))
+        range.deleteContents()
+        range.insertNode(document.createTextNode(word))
 
-      selection.modify('move', 'forward', 'word')
+        selection.modify('move', 'forward', 'word')
+      }
     }
-
   }
 }
 </script>
@@ -286,6 +297,7 @@ export default {
   visibility: hidden;
   width: 80%;
   min-width: 200px;
+  max-width: 300px;
 }
   .results_list.open {
     opacity: 1;
