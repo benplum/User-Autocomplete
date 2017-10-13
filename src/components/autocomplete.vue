@@ -9,6 +9,7 @@
       @keydown.left="clearResults()"
       @keydown.right="clearResults()"
       @input="onInput($event)"
+      @textinput="onInput($event)"
       @blur="clearResults()"
     ></div>
 
@@ -33,6 +34,11 @@
 </template>
 
 <script>
+import rangy from 'rangy'
+import 'rangy/lib/rangy-selectionsaverestore.js'
+import 'rangy/lib/rangy-textrange.js'
+import rangefix from 'rangefix'
+
 export default {
   name: 'autocomplete',
   props: [
@@ -82,15 +88,15 @@ export default {
           char = $event.data
         }
       } else if (window.getSelection) {
-        // Firefox
-        let selection = window.getSelection()
-        let range = selection.getRangeAt(0)
+        // Firefox / IE / Edge
+        let oldSelection = rangy.saveSelection()
+        let selection = rangy.getSelection()
+        selection.move('character', -1)
+        selection.expand('character')
 
-        let clone = range.cloneRange()
-        clone.selectNodeContents(this.$refs.input)
-        clone.setEnd(range.endContainer, range.endOffset)
-        let offset = clone.toString().length
-        char = String.fromCharCode(this.value.charCodeAt(offset - 1))
+        char = selection.toString()
+
+        rangy.restoreSelection(oldSelection)
       }
 
       // Test for letter keys only
@@ -210,12 +216,10 @@ export default {
      */
 
     positionResults (range) {
-      if (range && range.getClientRects) {
-        let rects = range.getClientRects()
+      let rects = rangefix.getClientRects(range.nativeRange)
 
-        if (rects.length && rects[0].y > 0) {
-          this.offsetTop = rects[0].y + 24
-        }
+      if (rects.length && rects[0].top) {
+        this.offsetTop = rects[0].top + 24
       }
     },
 
@@ -239,18 +243,17 @@ export default {
       let range
       let word = ''
 
-      if (window.getSelection && (selection = window.getSelection()).modify) {
-        range = selection.getRangeAt(0)
+      let oldSelection = rangy.saveSelection()
+      selection = rangy.getSelection()
+      selection.move('word', -1)
+      selection.expand('word')
 
-        selection.collapseToStart()
-        selection.modify('move', 'backward', 'word')
-        selection.modify('extend', 'forward', 'word')
+      word = selection.toString()
 
-        word = selection.toString()
+      rangy.restoreSelection(oldSelection)
 
-        selection.removeAllRanges()
-        selection.addRange(range)
-      }
+      selection = rangy.getSelection()
+      range = selection.getRangeAt(0)
 
       this.setSearch(word)
       this.positionResults(range)
@@ -266,18 +269,15 @@ export default {
 
       word += '\u00A0'
 
-      if (window.getSelection && (selection = window.getSelection()).modify) {
-        selection.collapseToStart()
-        selection.modify('move', 'backward', 'word')
-        selection.modify('extend', 'forward', 'word')
+      selection = rangy.getSelection()
+      selection.move('word', -1)
+      selection.expand('word')
 
-        range = selection.getRangeAt(0)
+      range = selection.getRangeAt(0)
+      range.pasteHtml(word)
 
-        range.deleteContents()
-        range.insertNode(document.createTextNode(word))
-
-        selection.modify('move', 'forward', 'word')
-      }
+      selection = rangy.getSelection()
+      selection.move('word', 1)
     }
   }
 }

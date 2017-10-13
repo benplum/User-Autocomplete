@@ -2,6 +2,9 @@
 // (runtime-only or standalone) has been set in webpack.base.conf with an alias.
 import Vue from 'vue'
 import App from './App'
+import es6promise from 'es6-promise'
+
+es6promise.polyfill()
 
 Vue.config.productionTip = false
 
