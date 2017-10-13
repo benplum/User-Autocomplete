@@ -19,8 +19,8 @@
     >
       <div class="results_item" v-for="(item, index) in results"
         :class="{ 'active': (index == active) }"
-        @mousedown="onResultClick(index)"
-        @touchstart="onResultClick(index)"
+        @mousedown="onResultClick($event, index)"
+        @touchstart="onResultClick($event, index)"
       >
         <img :src="item.avatar_url" alt="" class="results_item_image">
         <div class="results_item_content">
@@ -153,11 +153,15 @@ export default {
      * Handle item click
      */
 
-    onResultClick (index) {
+    onResultClick ($event, index) {
+      $event.preventDefault()
+
       this.active = index
 
       this.insertUser()
       this.clearResults()
+
+      this.$refs.input.focus()
     },
 
     /*
@@ -195,7 +199,7 @@ export default {
 
     setSearch (word) {
       if (word.length > 2) {
-        this.search = word
+        this.search = word.toLowerCase()
       } else {
         this.clearResults()
       }
