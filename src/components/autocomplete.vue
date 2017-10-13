@@ -3,12 +3,12 @@
 
     <!-- contenteditable gives us more control over range selection -->
     <div contenteditable="true" spellcheck="false" class="autocomplete" :class="className" ref="input"
-      @input="onInput($event)"
       @keydown.up="onUp($event)"
       @keydown.down="onDown($event)"
       @keydown.enter="onEnter($event)"
       @keydown.left="clearResults()"
       @keydown.right="clearResults()"
+      @input="onInput($event)"
       @blur="clearResults()"
     ></div>
 
@@ -18,7 +18,8 @@
     >
       <div class="results_item" v-for="(item, index) in results"
         :class="{ 'active': (index == active) }"
-        @click="onResultClick(index)"
+        @mousedown="onResultClick(index)"
+        @touchstart="onResultClick(index)"
       >
         <img :src="item.avatar_url" alt="" class="results_item_image">
         <div class="results_item_content">
@@ -71,13 +72,29 @@ export default {
      */
 
     onInput ($event) {
-      if (!$event.data || $event.data === ' ') {
-        this.clearResults()
+      this.setValue()
+
+      let char
+
+      if ($event.data) {
+        char = $event.data
       } else {
-        this.getWord()
+        // Test for only letter keys
+        let selection = window.getSelection()
+        let range = selection.getRangeAt(0)
+
+        let clone = range.cloneRange()
+        clone.selectNodeContents(this.$refs.input)
+        clone.setEnd(range.endContainer, range.endOffset)
+        let offset = clone.toString().length
+        char = String.fromCharCode(this.value.charCodeAt(offset - 1))
       }
 
-      this.setValue()
+      if (char.length === 1 && /[a-zA-Z0-9]/.test(char)) {
+        this.getWord()
+      } else {
+        this.clearResults()
+      }
     },
 
     /*
@@ -87,6 +104,7 @@ export default {
     onUp ($event) {
       if (this.hasResults()) {
         $event.preventDefault()
+        $event.stopPropagation()
 
         this.active--
         this.checkLimit()
@@ -100,6 +118,7 @@ export default {
     onDown ($event) {
       if (this.hasResults()) {
         $event.preventDefault()
+        $event.stopPropagation()
 
         this.active++
         this.checkLimit()
@@ -113,6 +132,7 @@ export default {
     onEnter ($event) {
       if (this.hasResults()) {
         $event.preventDefault()
+        $event.stopPropagation()
 
         this.insertUser()
         this.clearResults()
@@ -245,7 +265,7 @@ export default {
       range.deleteContents()
       range.insertNode(document.createTextNode(word))
 
-      selection.modify('move', 'forward', 'character')
+      selection.modify('move', 'forward', 'word')
     }
 
   }
