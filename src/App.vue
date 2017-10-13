@@ -21,13 +21,19 @@ export default {
   },
   data () {
     return {
-      userData: {}
+      userData: {} // Our user data
     }
   },
   mounted () {
+    // Load once mounted
     this.loadUserData()
   },
   methods: {
+
+    /*
+     * Load user data
+     */
+
     loadUserData () {
       // Load the user data for use elsewhere
       let p = axios.get('static/data.json')

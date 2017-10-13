@@ -2,10 +2,24 @@
   <div>
 
     <!-- contenteditable gives us more control over range selection -->
-    <div contenteditable="true" class="autocomplete" :class="className" @input="onInput()" @keydown.up="onUp($event)" @keydown.down="onDown($event)" @keydown.enter="onEnter($event)"></div>
+    <div contenteditable="true" spellcheck="false" class="autocomplete" :class="className" ref="input"
+      @input="onInput($event)"
+      @keydown.up="onUp($event)"
+      @keydown.down="onDown($event)"
+      @keydown.enter="onEnter($event)"
+      @keydown.left="clearResults()"
+      @keydown.right="clearResults()"
+      @blur="clearResults()"
+    ></div>
 
-    <div class="results_list" :class="{ 'open': results.length }" :style="{ 'top': offsetTop + 'px' }">
-      <div class="results_item" v-for="(item, index) in results" :class="{ 'active': (index == active) }">
+    <div class="results_list"
+      :class="{ 'open': results.length }"
+      :style="{ 'top': offsetTop + 'px' }"
+    >
+      <div class="results_item" v-for="(item, index) in results"
+        :class="{ 'active': (index == active) }"
+        @click="onResultClick(index)"
+      >
         <img :src="item.avatar_url" alt="" class="results_item_image">
         <div class="results_item_content">
           <span class="results_item_name">{{ item.name }}</span>
@@ -21,18 +35,24 @@
 export default {
   name: 'autocomplete',
   props: [
-    'className',
-    'userData'
+    'className', // Dynamic class attribute
+    'userData' // Search data
   ],
   data () {
     return {
-      search: '',
-      results: [],
-      active: 0,
-      offsetTop: 0
+      value: '', // Our input's value
+      search: '', // Current search text
+      results: [], // Search results
+      active: 0, // Selected result index
+      offsetTop: 0 // Results list top position
     }
   },
   watch: {
+
+    /*
+     * Handle updates when search text changes
+     */
+
     search () {
       if (this.search !== '') {
         this.results = this.userData.filter((item) => {
@@ -46,29 +66,52 @@ export default {
   },
   methods: {
 
-    // Input Events
+    /*
+     * Handle input event
+     */
 
-    onInput () {
-      this.getWord()
+    onInput ($event) {
+      if (!$event.data || $event.data === ' ') {
+        this.clearResults()
+      } else {
+        this.getWord()
+      }
+
+      this.setValue()
     },
+
+    /*
+     * Handle arrow up keydown event
+     */
+
     onUp ($event) {
-      if (this.hasInput()) {
+      if (this.hasResults()) {
         $event.preventDefault()
 
         this.active--
         this.checkLimit()
       }
     },
+
+    /*
+     * Handle arrow down keydown event
+     */
+
     onDown ($event) {
-      if (this.hasInput()) {
+      if (this.hasResults()) {
         $event.preventDefault()
 
         this.active++
         this.checkLimit()
       }
     },
+
+    /*
+     * Handle enter keydown event
+     */
+
     onEnter ($event) {
-      if (this.hasInput()) {
+      if (this.hasResults()) {
         $event.preventDefault()
 
         this.insertUser()
@@ -76,11 +119,29 @@ export default {
       }
     },
 
-    // Helpers
+    /*
+     * Handle item click
+     */
 
-    hasInput () {
+    onResultClick (index) {
+      this.active = index
+
+      this.insertUser()
+      this.clearResults()
+    },
+
+    /*
+     * Check if we have some results
+     */
+
+    hasResults () {
       return (this.search !== '' && this.results.length)
     },
+
+    /*
+     * Check selected result index
+     */
+
     checkLimit () {
       if (this.active < 0) {
         this.active = 0
@@ -89,20 +150,40 @@ export default {
         this.active = this.results.length - 1
       }
     },
+
+    /*
+     * Set the input value
+     */
+
+    setValue () {
+      this.value = this.$refs.input.textContent
+    },
+
+    /*
+     * Set the search text
+     */
+
     setSearch (word) {
       if (word.length > 2) {
-        this.setSearch(word)
+        this.search = word
       } else {
         this.clearResults()
       }
     },
+
+    /*
+     * Clear the current results
+     */
+
     clearResults () {
       this.search = ''
       this.results = []
       this.active = 0
     },
 
-    //
+    /*
+     * Position the results list on the page, relative to the current range
+     */
 
     positionResults (range) {
       let position = range.getBoundingClientRect()
@@ -112,18 +193,22 @@ export default {
       }
     },
 
-    // User
+    /*
+     * Insert the currently selected result
+     */
 
     insertUser () {
       let item = this.results[this.active]
 
       this.replaceWord(item.username)
+      this.setValue()
     },
 
-    // Range manipulation
+    /*
+     * Select the current word being typed
+     */
 
     getWord () {
-      // barrowed from http://jsfiddle.net/timdown/dBgHn/1/
       let selection = window.getSelection()
       let range = selection.getRangeAt(0)
       let word = ''
@@ -140,6 +225,11 @@ export default {
       this.setSearch(word)
       this.positionResults(range)
     },
+
+    /*
+     * Replace the current word with new text
+     */
+
     replaceWord (word) {
       let selection = window.getSelection()
       let range
