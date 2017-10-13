@@ -35,10 +35,11 @@ export default {
       p.then((response) => {
         this.userData = response.data
       })
-
       p.catch((error) => {
         console.log(error)
       })
+
+      return p
     }
   }
 }
